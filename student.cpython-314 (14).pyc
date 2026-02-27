@@ -1,0 +1,34 @@
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from app.db.session import SessionLocal
+from app.models.major import Major
+from app.schemas.major import MajorCreate, MajorResponse
+
+router = APIRouter()
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+@router.post("/", response_model=MajorResponse)
+def create_major(major: MajorCreate, db: Session = Depends(get_db)):
+    db_major = Major(**major.dict())
+    db.add(db_major)
+    db.commit()
+    db.refresh(db_major)
+    return db_major
+
+@router.get("/", response_model=list[MajorResponse])
+def get_majors(db: Session = Depends(get_db)):
+    return db.query(Major).all()
+
+@router.delete("/{major_id}")
+def delete_major(major_id: int, db: Session = Depends(get_db)):
+    major = db.query(Major).get(major_id)
+    db.delete(major)
+    db.commit()
+    return {"message": "Deleted"}
